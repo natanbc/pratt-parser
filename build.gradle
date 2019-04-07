@@ -1,0 +1,152 @@
+plugins {
+    id 'java-library'
+    id 'maven'
+    id 'maven-publish'
+    id 'com.jfrog.bintray' version '1.8.4'
+}
+
+def versionObj = new Version(major: 1, minor: 0, revision: 0)
+
+group 'com.github.natanbc'
+version versionObj.toString()
+
+sourceCompatibility = 1.8
+
+sourceSets {
+    example {
+        compileClasspath += sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    api 'com.google.code.findbugs:jsr305:3.0.2'
+}
+
+import org.gradle.external.javadoc.StandardJavadocDocletOptions
+
+javadoc {
+    failOnError = false
+    options.encoding = 'UTF-8'
+    if(options instanceof StandardJavadocDocletOptions) {
+        options
+                .linkSource()
+                .noDeprecated()
+                .links(
+                        'https://docs.oracle.com/javase/8/docs/api/',
+                        'https://static.javadoc.io/com.google.code.findbugs/jsr305/3.0.2/',
+                )
+                .charSet('UTF-8')
+                .docEncoding('UTF-8')
+                .jFlags('-Dhttp.agent=javadoc')
+    }
+    if(JavaVersion.current().isJava9Compatible()) {
+        options.addBooleanOption('html5', true)
+    }
+    if(JavaVersion.current().isJava11Compatible()) {
+        options.addBooleanOption('-no-module-directories', true)
+    }
+}
+
+jar {
+    manifest.attributes([
+            'Implementation-Version': versionObj.toString(),
+            'Automatic-Module-Name': 'com.github.natanbc.pratt'
+    ])
+}
+
+task sourceJar(type: Jar) {
+    classifier 'sources'
+    from sourceSets.main.allJava
+}
+
+task javadocJar(type: Jar, dependsOn: javadoc) {
+    classifier 'javadoc'
+    from javadoc.destinationDir
+}
+
+publishing {
+    publications {
+        BintrayRelease(MavenPublication) {
+            from components.java
+            groupId 'com.github.natanbc'
+            artifactId 'pratt-parser'
+
+            artifact sourceJar
+            artifact javadocJar
+        }
+    }
+}
+
+bintray {
+    version = project.version
+    user = getProjectProperty('BINTRAY_USERNAME')
+    key = getProjectProperty('BINTRAY_API_KEY')
+    publications = ['BintrayRelease']
+    pkg {
+        repo = 'maven'
+        name = 'pratt-parser'
+        licenses = ['Apache-2.0']
+        vcsUrl = 'https://github.com/natanbc/pratt-parser.git'
+        publish = true
+        version {
+            name = project.version.toString()
+            released = new Date()
+        }
+    }
+}
+
+String getProjectProperty(String propertyName) {
+    String property;
+    if(hasProperty(propertyName)) {
+        property = project.properties[propertyName]
+    } else {
+        property = System.getenv(propertyName) ?: ''
+    }
+    return property
+}
+
+bintrayUpload {
+    dependsOn build
+
+    onlyIf { !getProjectProperty('BINTRAY_USERNAME').empty }
+    onlyIf { !getProjectProperty('BINTRAY_API_KEY').empty }
+}
+
+def lint = [
+        "auxiliaryclass",
+        "cast",
+        "deprecation",
+        "dep-ann",
+        "divzero",
+        "empty",
+        "fallthrough",
+        "finally",
+        "options",
+        "overloads",
+        "overrides",
+        "path",
+        "rawtypes",
+        "static",
+        "try",
+        "unchecked",
+        "varargs",
+]
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+    options.incremental = true
+    options.compilerArgs += ["-Xlint:${lint.join(",")}", "-Werror"]
+}
+
+class Version {
+    String major, minor, revision
+
+    String toString() {
+        "$major.$minor.$revision"
+    }
+}
