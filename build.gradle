@@ -5,7 +5,7 @@ plugins {
     id 'com.jfrog.bintray' version '1.8.4'
 }
 
-def versionObj = new Version(major: 1, minor: 0, revision: 0)
+def versionObj = new Version(major: 1, minor: 0, revision: 1)
 
 group 'com.github.natanbc'
 version versionObj.toString()
@@ -15,7 +15,9 @@ sourceCompatibility = 1.8
 sourceSets {
     example {
         compileClasspath += sourceSets.main.compileClasspath
+        compileClasspath += sourceSets.test.compileClasspath
         runtimeClasspath += sourceSets.main.runtimeClasspath
+        runtimeClasspath += sourceSets.test.runtimeClasspath
     }
 }
 

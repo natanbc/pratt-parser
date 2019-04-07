@@ -5,9 +5,7 @@ import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.PushbackReader;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
@@ -15,13 +13,10 @@ import java.util.Map;
  */
 public abstract class Lexer {
     private final Map<Integer, StringBuilder> lineMap = new HashMap<>();
-    private final List<Token> tokens = new ArrayList<>();
     private final PushbackReader reader;
     private int line = 1;
     private int column = 0;
     private Token nextToken;
-    private int idx = 0;
-    private boolean lexed = false;
     
     public Lexer(@Nonnull PushbackReader reader) {
         this.reader = reader;
@@ -56,24 +51,12 @@ public abstract class Lexer {
     @Nonnull
     @CheckReturnValue
     public Token next() {
-        //lazily load
-        if(!lexed) {
-            lexed = true;
-            Token t;
-            do {
-                t = parse();
-                tokens.add(t);
-            } while(!t.kind().equals(eofKind()));
-        }
         if(nextToken != null) {
             Token t = nextToken;
             nextToken = null;
             return t;
         }
-        if(idx >= tokens.size()) {
-            return new Token(eofKind(), pos(), "<EOF>");
-        }
-        return tokens.get(idx++);
+        return parse();
     }
     
     /**
@@ -84,9 +67,8 @@ public abstract class Lexer {
             nextToken = null;
             return;
         }
-        if(idx < tokens.size()) {
-            idx++;
-        }
+        //noinspection ResultOfMethodCallIgnored
+        parse();
     }
     
     /**
