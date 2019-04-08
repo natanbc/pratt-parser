@@ -7,10 +7,10 @@ import com.github.natanbc.pratt.TokenKind;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.io.PushbackReader;
+import java.io.Reader;
 
 public class DiscordLexer extends Lexer {
-    public DiscordLexer(@Nonnull PushbackReader reader) {
+    public DiscordLexer(@Nonnull Reader reader) {
         super(reader);
     }
     
@@ -58,7 +58,7 @@ public class DiscordLexer extends Lexer {
             ch = read(false);
         }
         if(ch != -1) {
-            unread(ch);
+            back();
         }
         return sb.toString();
     }
@@ -75,7 +75,7 @@ public class DiscordLexer extends Lexer {
             ch = read(false);
         }
         if(ch != -1) {
-            unread(ch);
+            back();
         }
         String text = sb.toString();
         try {

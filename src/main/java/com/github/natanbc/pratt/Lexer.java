@@ -5,6 +5,7 @@ import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.io.PushbackReader;
+import java.io.Reader;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -13,13 +14,21 @@ import java.util.Map;
  */
 public abstract class Lexer {
     private final Map<Integer, StringBuilder> lineMap = new HashMap<>();
-    private final PushbackReader reader;
+    private final CharHistory unreadChars = new CharHistory(0);
+    private final Reader reader;
     private int line = 1;
     private int column = 0;
     private Token nextToken;
+    private int lastLine = -1;
+    private int lastColumn = -1;
     
-    public Lexer(@Nonnull PushbackReader reader) {
+    public Lexer(@Nonnull Reader reader) {
         this.reader = reader;
+    }
+    
+    @Deprecated
+    public Lexer(@Nonnull PushbackReader reader) {
+        this((Reader)reader);
     }
     
     /**
@@ -266,8 +275,9 @@ public abstract class Lexer {
         StringBuilder buffer = lineBuffer(pos.line());
         int before = Math.min(pos.column() - 1, around);
         int after = Math.min(buffer.length() - (pos.column() + length), around);
+        int max = buffer.charAt(buffer.length() - 1) == '\n' ? buffer.length() - 1 : buffer.length();
         String str = buffer.substring(Math.max(pos.column() - around - 1, 0),
-                Math.min(pos.column() + around + length - 1, buffer.length()));
+                Math.min(pos.column() + around + length - 1, max));
         return new ErrorContext(before, after, str);
     }
     
@@ -296,9 +306,93 @@ public abstract class Lexer {
     protected int peek(boolean ignoreWhitespace) {
         int i = read(ignoreWhitespace);
         if(i != -1) {
-            unread(i);
+            back();
         }
         return i;
+    }
+    
+    /**
+     * Returns whether or not the next character matches the
+     * provided one.
+     *
+     * <br>Equivalent to {@code match(ch, false)}.
+     *
+     * @param ch Character to match.
+     *
+     * @return Whether or not the next character matches the provided one.
+     */
+    protected boolean match(char ch) {
+        return match(ch, false);
+    }
+    
+    /**
+     * Returns whether or not the next character matches the
+     * provided one.
+     *
+     * @param ch Character to match.
+     * @param ignoreWhitespace Whether or not whitespace should be ignored.
+     *
+     * @return Whether or not the next character matches the provided one.
+     */
+    protected boolean match(char ch, boolean ignoreWhitespace) {
+        return peek(ignoreWhitespace) == ch;
+    }
+    
+    /**
+     * Returns to a position in the past. The provided position must be
+     * before the current one.
+     *
+     * @param pos Position to move to.
+     */
+    protected void backTo(@Nonnull Position pos) {
+        backTo(pos.line(), pos.column());
+    }
+    
+    /**
+     * Returns to a position in the past. The provided position must be
+     * before the current one.
+     *
+     * @param line Line to move to.
+     * @param column Column to move to.
+     */
+    protected void backTo(int line, int column) {
+        if(line > this.line || (line == this.line && column > this.column)) {
+            throw new IllegalArgumentException("Cannot go back to a position ahead of the current!");
+        }
+        while(line != this.line || column < this.column) {
+            char last;
+            StringBuilder sb = lineBuffer();
+            int len = sb.length();
+            if(len > 0) {
+                last = sb.charAt(len - 1);
+                sb.setLength(len - 1);
+            } else {
+                last = '\n';
+            }
+            if(last == '\n') {
+                this.line--;
+                this.column = lineBuffer().length();
+            } else {
+                this.column--;
+            }
+            unreadChars.insert(last);
+        }
+    }
+    
+    /**
+     * Returns the lexer to the state it was before the last
+     * call to {@link #read(boolean)}. Only one call can be
+     * undone by this method.
+     *
+     * <br>To undo more, you should use {@link #backTo(Position)} instead.
+     */
+    protected void back() {
+        if(lastLine == -1) {
+            throw new IllegalStateException("Cannot go back more than one call to read()!");
+        }
+        backTo(lastLine, lastColumn);
+        lastLine = -1;
+        lastColumn = -1;
     }
     
     /**
@@ -306,16 +400,23 @@ public abstract class Lexer {
      * by the next call to {@link #read(boolean)}.
      *
      * @param ch Character to insert.
+     *
+     * @deprecated Use {@link #back()} or {@link #backTo(Position)} instead.
      */
+    @Deprecated
     protected void unread(@Nonnegative int ch) {
-        column -= 1;
-        StringBuilder buffer = lineBuffer();
-        buffer.setLength(buffer.length() - 1);
-        try {
-            reader.unread(ch);
-        } catch(IOException e) {
-            throw new IllegalStateException(e);
+        StringBuilder sb = lineBuffer();
+        int len = sb.length();
+        if(len > 0) {
+            sb.setLength(len - 1);
         }
+        if(ch == '\n') {
+            this.line--;
+            this.column = lineBuffer().length();
+        } else {
+            column -= 1;
+        }
+        unreadChars.insert((char)ch);
     }
     
     /**
@@ -329,22 +430,27 @@ public abstract class Lexer {
      */
     @CheckReturnValue
     protected int read(boolean ignoreWhitespace) {
+        lastLine = line;
+        lastColumn = column;
         try {
             while(true) {
-                int c = reader.read();
+                int c = unreadChars.size() > 0 ? unreadChars.remove() : reader.read();
                 if(c == -1) {
                     return -1;
                 }
                 char ch = (char)c;
+                lineBuffer().append(ch);
                 if(ch == '\n') {
                     line++;
                     column = 0;
-                } else if(ignoreWhitespace && Character.isWhitespace(ch)) {
-                    column++;
-                    lineBuffer().append(ch);
+                    if(!ignoreWhitespace) {
+                        return ch;
+                    }
                 } else {
                     column++;
-                    lineBuffer().append(ch);
+                    if(ignoreWhitespace && Character.isWhitespace(ch)) {
+                        continue;
+                    }
                     return ch;
                 }
             }

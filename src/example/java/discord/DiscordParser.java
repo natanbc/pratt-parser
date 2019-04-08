@@ -4,12 +4,11 @@ import com.github.natanbc.pratt.Parser;
 import discord.entity.Entity;
 
 import javax.annotation.Nonnull;
-import java.io.PushbackReader;
 import java.io.StringReader;
 
 public class DiscordParser extends Parser<Void, Entity> {
     public DiscordParser(@Nonnull String expression) {
-        super(new DiscordLexer(new PushbackReader(new StringReader(expression))));
+        super(new DiscordLexer(new StringReader(expression)));
         for(DiscordTokenKind kind : DiscordTokenKind.values()) {
             register(kind, DiscordParselets.DEFAULT);
         }

@@ -7,10 +7,10 @@ import com.github.natanbc.pratt.TokenKind;
 
 import javax.annotation.CheckReturnValue;
 import javax.annotation.Nonnull;
-import java.io.PushbackReader;
+import java.io.Reader;
 
 public class MathLexer extends Lexer {
-    public MathLexer(@Nonnull PushbackReader reader) {
+    public MathLexer(@Nonnull Reader reader) {
         super(reader);
     }
     
@@ -63,8 +63,7 @@ public class MathLexer extends Lexer {
                 if(point) {
                     return sb.toString();
                 }
-                ch = read(false);
-                unread(ch);
+                ch = peek(false);
                 if(!Character.isDigit(ch)) {
                     return sb.toString();
                 }
@@ -72,7 +71,7 @@ public class MathLexer extends Lexer {
                 point = true;
             } else {
                 if(ch != -1) {
-                    unread(ch);
+                    back();
                 }
                 return sb.toString();
             }
