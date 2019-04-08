@@ -17,7 +17,7 @@ public class DiscordLexer extends Lexer {
     @CheckReturnValue
     @Nonnull
     @Override
-    protected Token parse() {
+    public Token parse() {
         int ch = read(false);
         switch(ch) {
             case -1: return new Token(DiscordTokenKind.EOF, pos(), "<EOF>");
@@ -46,7 +46,7 @@ public class DiscordLexer extends Lexer {
     @CheckReturnValue
     @Nonnull
     @Override
-    protected TokenKind eofKind() {
+    public TokenKind eofKind() {
         return DiscordTokenKind.EOF;
     }
     

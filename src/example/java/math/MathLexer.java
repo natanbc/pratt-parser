@@ -17,7 +17,7 @@ public class MathLexer extends Lexer {
     @Nonnull
     @CheckReturnValue
     @Override
-    protected Token parse() {
+    public Token parse() {
         int ch = read(true);
         switch(ch) {
             case -1: return new Token(MathTokenKind.EOF, pos(), "<EOF>");
@@ -46,7 +46,7 @@ public class MathLexer extends Lexer {
     @Nonnull
     @CheckReturnValue
     @Override
-    protected TokenKind eofKind() {
+    public TokenKind eofKind() {
         return MathTokenKind.EOF;
     }
     
