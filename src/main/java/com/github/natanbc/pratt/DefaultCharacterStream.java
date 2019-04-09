@@ -80,10 +80,14 @@ public class DefaultCharacterStream implements CharacterStream {
         if(line > this.line || (line == this.line && column > this.column)) {
             throw new IllegalArgumentException("Cannot go back to a position ahead of the current!");
         }
-        while(line > this.line || column < this.column) {
+        while(line < this.line || column < this.column) {
             char last;
             StringBuilder sb = lineBuffer();
             int len = sb.length();
+            if(len == 0) {
+                sb = lineBuffer(this.line - 1);
+                len = sb.length();
+            }
             if(len > 0) {
                 last = sb.charAt(len - 1);
                 sb.setLength(len - 1);
