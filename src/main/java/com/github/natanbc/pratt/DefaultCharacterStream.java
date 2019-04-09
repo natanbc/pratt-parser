@@ -9,13 +9,13 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class DefaultCharacterStream implements CharacterStream {
-    private final Map<Integer, StringBuilder> lineMap = new HashMap<>();
-    private final CharHistory unreadChars = new CharHistory(0);
-    private final Reader reader;
-    private int line = 1;
-    private int column = 0;
-    private int lastLine = -1;
-    private int lastColumn = -1;
+    protected final Map<Integer, StringBuilder> lineMap = new HashMap<>();
+    protected final CharHistory unreadChars = new CharHistory(0);
+    protected final Reader reader;
+    protected int line = 1;
+    protected int column = 0;
+    protected int lastLine = -1;
+    protected int lastColumn = -1;
     
     public DefaultCharacterStream(Reader reader) {
         this.reader = reader;
@@ -80,7 +80,7 @@ public class DefaultCharacterStream implements CharacterStream {
         if(line > this.line || (line == this.line && column > this.column)) {
             throw new IllegalArgumentException("Cannot go back to a position ahead of the current!");
         }
-        while(line != this.line || column < this.column) {
+        while(line > this.line || column < this.column) {
             char last;
             StringBuilder sb = lineBuffer();
             int len = sb.length();

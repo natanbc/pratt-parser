@@ -9,8 +9,8 @@ import java.io.Reader;
  * Transforms the data in a reader into a stream of tokens.
  */
 public abstract class Lexer implements CharacterStream {
-    private final CharacterStream realStream;
-    private Token nextToken;
+    protected final CharacterStream realStream;
+    protected Token nextToken;
     
     public Lexer(@Nonnull CharacterStream stream) {
         this.realStream = stream;
