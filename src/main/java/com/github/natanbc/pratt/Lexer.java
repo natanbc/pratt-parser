@@ -8,11 +8,16 @@ import java.io.Reader;
 /**
  * Transforms the data in a reader into a stream of tokens.
  */
-public abstract class Lexer extends CharacterStream {
+public abstract class Lexer implements CharacterStream {
+    private final CharacterStream realStream;
     private Token nextToken;
     
+    public Lexer(@Nonnull CharacterStream stream) {
+        this.realStream = stream;
+    }
+    
     public Lexer(@Nonnull Reader reader) {
-        super(reader);
+        this(new DefaultCharacterStream(reader));
     }
     
     @Deprecated
@@ -158,5 +163,83 @@ public abstract class Lexer extends CharacterStream {
     @CheckReturnValue
     public ErrorContext contextFor(@Nonnull Token token, @Nonnegative int around) {
         return context(token.position(), token.value().length(), around);
+    }
+    
+    @Override
+    @CheckReturnValue
+    @Nonnull
+    public String prettyContext(@Nonnull Position pos, @Nonnegative int length) {
+        return realStream.prettyContext(pos, length);
+    }
+    
+    @Override
+    @CheckReturnValue
+    @Nonnull
+    public String prettyContext(@Nonnull Position pos, @Nonnegative int length, @Nonnegative int around) {
+        return realStream.prettyContext(pos, length, around);
+    }
+    
+    @Override
+    @CheckReturnValue
+    @Nonnull
+    public ErrorContext context(@Nonnull Position pos, @Nonnegative int length) {
+        return realStream.context(pos, length);
+    }
+    
+    @Override
+    @CheckReturnValue
+    @Nonnull
+    public ErrorContext context(@Nonnull Position pos, @Nonnegative int length, @Nonnegative int around) {
+        return realStream.context(pos, length, around);
+    }
+    
+    @Override
+    @CheckReturnValue
+    @Nonnull
+    public Position pos() {
+        return realStream.pos();
+    }
+    
+    @Override
+    @CheckReturnValue
+    public int peek(boolean ignoreWhitespace) {
+        return realStream.peek(ignoreWhitespace);
+    }
+    
+    @Override
+    public boolean match(char ch) {
+        return realStream.match(ch);
+    }
+    
+    @Override
+    public boolean match(char ch, boolean ignoreWhitespace) {
+        return realStream.match(ch, ignoreWhitespace);
+    }
+    
+    @Override
+    public void backTo(@Nonnull Position pos) {
+        realStream.backTo(pos);
+    }
+    
+    @Override
+    public void backTo(int line, int column) {
+        realStream.backTo(line, column);
+    }
+    
+    @Override
+    public void back() {
+        realStream.back();
+    }
+    
+    @Override
+    @Deprecated
+    public void unread(@Nonnegative int ch) {
+        realStream.unread(ch);
+    }
+    
+    @Override
+    @CheckReturnValue
+    public int read(boolean ignoreWhitespace) {
+        return realStream.read(ignoreWhitespace);
     }
 }
