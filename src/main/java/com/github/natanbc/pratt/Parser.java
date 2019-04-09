@@ -5,6 +5,8 @@ import javax.annotation.Nonnegative;
 import javax.annotation.Nonnull;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
+import java.util.function.Predicate;
 
 /**
  * Transforms a stream of tokens into an usable format, usually
@@ -18,9 +20,9 @@ import java.util.Map;
  * @see <a href="https://eli.thegreenplace.net/2010/01/02/top-down-operator-precedence-parsing/">Top-Down operator precedence parsing</a>
  */
 public class Parser<C, R> {
-    private final Map<TokenKind, PrefixParselet<C, R>> prefixParselets = new HashMap<>();
-    private final Map<TokenKind, InfixParselet<C, R>> infixParselets = new HashMap<>();
-    private final Lexer lexer;
+    protected final Map<TokenKind, PrefixParselet<C, R>> prefixParselets = new HashMap<>();
+    protected final Map<TokenKind, InfixParselet<C, R>> infixParselets = new HashMap<>();
+    protected final Lexer lexer;
     
     public Parser(@Nonnull Lexer lexer) {
         this.lexer = lexer;
@@ -89,7 +91,7 @@ public class Parser<C, R> {
         if(prefix == null) {
             Position pos = t.position();
             throw new IllegalArgumentException("Unexpected token of type " +
-                    t.kind() + " ( " + t.value() + ") at line " + pos.line() + ", column " +
+                    t.kind() + " (" + t.value() + ") at line " + pos.line() + ", column " +
                     pos.column() + "\n" + lexer.prettyContextFor(t));
         }
         R left = prefix.parse(context, this, t);
@@ -122,15 +124,49 @@ public class Parser<C, R> {
      */
     @CheckReturnValue
     public boolean matches(@Nonnull TokenKind kind) {
-        TokenKind t = peek().kind();
-        if(t.equals(lexer.eofKind())) {
-            throw new IllegalStateException("Unexpected EOF\n" + lexer.prettyContextFor(peek()));
-        }
-        boolean match = t.equals(kind);
+        boolean match = peek().kind().equals(kind);
         if(match) {
             lexer.skip();
         }
         return match;
+    }
+    
+    /**
+     * Returns the next token if it matches the provided kind.
+     * If it doesn't, it'll be {@link Lexer#push(Token) pushed}
+     * back to the lexer.
+     *
+     * @param kind Wanted kind.
+     *
+     * @return The matched token, or {@link Optional#empty()} if
+     *         there wasn't a match.
+     */
+    @Nonnull
+    @CheckReturnValue
+    public Optional<Token> match(@Nonnull TokenKind kind) {
+        return match(t -> t.kind().equals(kind));
+    }
+    
+    /**
+     * Returns the next token if it matches the provided filter.
+     * If it doesn't, it'll be {@link Lexer#push(Token) pushed}
+     * back to the lexer.
+     *
+     * @param predicate Determines whether or not the token is
+     *                  wanted.
+     *
+     * @return The matched token, or {@link Optional#empty()} if
+     *         there wasn't a match.
+     */
+    @Nonnull
+    @CheckReturnValue
+    public Optional<Token> match(@Nonnull Predicate<Token> predicate) {
+        Token t = lexer.next();
+        if(predicate.test(t)) {
+            return Optional.of(t);
+        }
+        lexer.push(t);
+        return Optional.empty();
     }
     
     /**
@@ -150,33 +186,32 @@ public class Parser<C, R> {
     /**
      * Returns the current token if it has the provided kind, otherwise throws.
      *
-     * @param kind Wanted kind.
+     * @param expected Expected kind.
      *
      * @return The current token, if it matches the wanted kind.
      */
     @Nonnull
     @CheckReturnValue
-    public Token consume(@Nonnull TokenKind kind) {
-        Token t = lexer.next();
-        checkKind(kind, t);
-        return t;
+    public Token consume(@Nonnull TokenKind expected) {
+        return checkKind(lexer.next(), expected);
     }
     
     /**
      * Skips the current token if it has the provided kind, otherwise throws.
      *
-     * @param kind Wanted kind.
+     * @param expected Expected kind.
      */
-    public void expect(@Nonnull TokenKind kind) {
-        checkKind(kind, lexer.next());
+    public void expect(@Nonnull TokenKind expected) {
+        checkKind(lexer.next(), expected);
     }
     
-    private void checkKind(@Nonnull TokenKind expected, @Nonnull Token actual) {
-        if(expected != actual.kind()) {
+    private Token checkKind(@Nonnull Token actual, @Nonnull TokenKind expected) {
+        if(!expected.equals(actual.kind())) {
             Position pos = actual.position();
             throw new IllegalArgumentException("Expected token of type " + expected + ", got " +
                     actual.kind() + " (" + actual.value() + ") at line " + pos.line() + ", column " +
                     pos.column() + "\n" + lexer.prettyContextFor(actual));
         }
+        return actual;
     }
 }
